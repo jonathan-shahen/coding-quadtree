@@ -41,13 +41,14 @@ Data is stored in `leaf` nodes. Non-leaf nodes must have 4 children (sub-dividin
 
 - Why not just store all businesses in a LIST?
     - This takes $O(n)$ time to find all businesses that match
-    - Using a tree structure can drastically reduce the number of checks needed to come to the same answer
+    - Using a tree structure can drastically reduce the number of checks (average logarithmic reduction) needed to come to the same answer
         - This speeds up READ times, which is assumed a priority
 - The earth is round and lat/long is not linear
     - When talking about very small distances, then linear bounding areas works very well
     - lat/long being not a linear coord is a serious issue, even though a significant amount of people live near the equator, the skew is massive enough to require special distance measurements
         - see: https://en.wikipedia.org/wiki/Haversine_formula to determine distance between 2 points on a sphere
-        - see: https://en.wikipedia.org/wiki/Spherical_coordinate_system
+        - see: http://janmatuschek.de/LatitudeLongitudeBoundingCoordinates to create a min/max lat/long box for `I`+`R`
+        - see: https://en.wikipedia.org/wiki/Spherical_coordinate_system general understanding
 
 ## Implementations
 
