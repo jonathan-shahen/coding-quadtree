@@ -10,11 +10,11 @@ The purpose of this repo is to experiment with QuadTrees for storing highly comp
 
 We have a map/location based website, and we have a list of millions of businesses (`N` used to repesent this number) registered with us.
 
-Given a lat/long point `I` and a radius `R`, use a Geo Quad Tree to answer the following:
+Given a lat/long point `I=(lat,long)` and a radius `R`, use a Geo Quad Tree to answer the following:
 
 1. Return a list of all businesses that fit within that radius `R`
-    - it is okay to use `circle` or `square` radius
-2. Return a list of all businesses that fit within that radius `2*R` (exclude the businesses from 1)
+    - it is okay to use `circle` or `square` radius.
+2. Return a list of all businesses that fit within that radius `2*R` (exclude the businesses within `R`)
 
 ### Assumptions
 
@@ -52,8 +52,9 @@ Data is stored in `leaf` nodes. Non-leaf nodes must have 4 children (sub-dividin
 
 ## Implementations
 
-1. [Rust](rust/README.md)
-1. [Go](go/README.md)
+1. [Rust](src/rust/README.md)
+1. [Go](src/go/README.md)
+1. [C++](src/cpp/README.md)
 
 ## Results
 
