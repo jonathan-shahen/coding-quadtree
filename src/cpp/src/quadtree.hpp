@@ -3,7 +3,7 @@
 
 #define QUAD_TREE__NODE_POINTS_LIMIT 100
 #define QUAD_TREE__NODE_RESERVE 1'000'000
-#define QUAD_TREE__NODE_MIN_AREA 100
+#define QUAD_TREE__NODE_MIN_AREA 10
 
 #ifdef DEBUG
 #define QUAD_TREE__NODE_POINTS_LIMIT 3
@@ -66,6 +66,7 @@ namespace QuadTree
         int _root_index = 0;
         long long _count_points = 0;
         long long _count_subdivides = 0;
+        long long _count_overflows = 0;
 
     public:
         QuadTree(std::string csvfilepath);

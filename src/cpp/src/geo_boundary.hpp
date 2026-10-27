@@ -33,9 +33,9 @@ namespace QuadTree
             // approx area = length * width
             return (
                 // Delta degrees -> to radians -> to km -> to m
-                abs(lat_max - lat_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) / (1000) *
+                abs(lat_max - lat_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) * (1000) *
                 // Delta degrees -> to radians -> to km -> to m
-                abs(lon_max - lon_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) / (1000));
+                abs(lon_max - lon_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) * (1000));
         }
 
         inline GeoBoundary nw() const

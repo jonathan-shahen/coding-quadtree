@@ -92,7 +92,9 @@ namespace QuadTree
         auto t2 = std::chrono::high_resolution_clock::now();
         auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
         std::cout << "    Build Time: " << time_span.count() << " seconds.\n";
+        std::cout << "     Overflows: " << _count_overflows << "\n";
         std::cout << "    Subdivides: " << _count_subdivides << "\n";
+        std::cout << "         Nodes: " << _nodes.size() << "\n";
         std::cout << "        Points: " << _count_points << "\n";
     }
 
@@ -108,11 +110,18 @@ namespace QuadTree
 
         Point point{id, lat, lon};
 
-        // INSERT: into a LEAF node if there is capacity OR cannot split
-        // NOTE: we must exceed capacity if the minimum node area is reached
-        if (node->is_leaf() &&
-            (node->num_points() < QUAD_TREE__NODE_POINTS_LIMIT || node->boundary.area() <= QUAD_TREE__NODE_MIN_AREA))
+        // INSERT: into a LEAF node if there is capacity
+        if (node->is_leaf() && node->num_points() < QUAD_TREE__NODE_POINTS_LIMIT)
         {
+            node->points.push_back(point);
+            return true;
+        }
+
+        // Mall Problem: Prevent Infinite Depth Tree
+        // NOTE: we must exceed capacity if the minimum node area is reached
+        if (node->is_leaf() && node->boundary.area() <= QUAD_TREE__NODE_MIN_AREA)
+        {
+            _count_overflows++;
             node->points.push_back(point);
             return true;
         }
