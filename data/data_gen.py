@@ -4,6 +4,7 @@ import typing
 import csv
 import math
 import numpy
+import time
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -33,15 +34,17 @@ class DataSplit:
     radius: float
     extra: any = None
 
+
 # Earth's radius (km)
 # NOTE: this is an approximate at the equator, but the polar radius is 6356.8 km (0.33% percent diff)
 EARTH_RADIUS = 6378.1
+
 
 def bounding_box(
         center_lat: float,
         center_lon: float,
         radius: float
-) -> typing.Dict[str,float]:
+) -> typing.Dict[str, float]:
     '''
     Returns:
         Bounding box in DEGREES
@@ -60,6 +63,7 @@ def bounding_box(
         "lon_max": math.degrees(center_lon + delta_lon),
     }
 
+
 def gen_points(
         split: DataSplit,
         id_start: int,
@@ -77,9 +81,12 @@ def gen_points(
     box = bounding_box(center_lat, center_lon, split.radius)
 
     if split.feature == MapFeature.EVEN_SPREAD:
-        rand_lat = numpy.random.uniform(box['lat_min'], box['lat_max'], size=split.num_points)
-        rand_lon = numpy.random.uniform(box['lon_min'], box['lon_max'], size=split.num_points)
-        
+        # TIP: do not need to worry about sorting negatives (ex: `numpy.random.uniform(-5,-10) -> -8.12`)
+        rand_lat = numpy.random.uniform(
+            box['lat_min'], box['lat_max'], size=split.num_points)
+        rand_lon = numpy.random.uniform(
+            box['lon_min'], box['lon_max'], size=split.num_points)
+
         for i in range(split.num_points):
             if include_split:
                 s = f'{id_start +i},{rand_lat[i]},{rand_lon[i]},{split_index}\n'
@@ -88,8 +95,6 @@ def gen_points(
             points.append(s)
     elif split.feature == MapFeature.EVEN_SPREAD_DONUT:
         donut_hole_box = bounding_box(center_lat, center_lon, split.extra)
-        print(box)
-        print(donut_hole_box)
 
         # used to ensure exact num_points generated
         a_top = int(round(1/3 * split.num_points))
@@ -101,23 +106,28 @@ def gen_points(
             # a_top
             *numpy.random.uniform(donut_hole_box['lat_min'], box['lat_min'], size=a_top),
             # a_bottom
-            *numpy.random.uniform(box['lat_max'], donut_hole_box['lat_max'], size=a_bottom),
+            *numpy.random.uniform(box['lat_max'],
+                                  donut_hole_box['lat_max'], size=a_bottom),
             # b_left
             *numpy.random.uniform(box['lat_min'], box['lat_max'], size=b_left),
             # b_right
-            *numpy.random.uniform(box['lat_min'], box['lat_max'], size=b_right),
+            *numpy.random.uniform(box['lat_min'],
+                                  box['lat_max'], size=b_right),
         ]
         rand_lon = [
             # a_top
-            *numpy.random.uniform(donut_hole_box['lon_min'], donut_hole_box['lon_max'], size=a_top),
+            *numpy.random.uniform(donut_hole_box['lon_min'],
+                                  donut_hole_box['lon_max'], size=a_top),
             # a_bottom
-            *numpy.random.uniform(donut_hole_box['lon_min'], donut_hole_box['lon_max'], size=a_bottom),
+            *numpy.random.uniform(donut_hole_box['lon_min'],
+                                  donut_hole_box['lon_max'], size=a_bottom),
             # b_left
             *numpy.random.uniform(donut_hole_box['lon_min'], box['lon_min'], size=b_left),
             # b_right
-            *numpy.random.uniform(box['lon_max'], donut_hole_box['lon_max'], size=b_right),
+            *numpy.random.uniform(box['lon_max'],
+                                  donut_hole_box['lon_max'], size=b_right),
         ]
-    
+
         for i in range(split.num_points):
             if include_split:
                 s = f'{id_start +i},{rand_lat[i]},{rand_lon[i]},{split_index}\n'
@@ -125,15 +135,16 @@ def gen_points(
                 s = f'{id_start +i},{rand_lat[i]},{rand_lon[i]}\n'
             points.append(s)
     else:
+        # TODO: implement MapFeature.STREET
+        # TODO: implement MapFeature.MALL
         print(f'FAILURE(unimplemented): unknown map feature; {split.feature}')
 
     return points
 
 
-
 def split_data(
-        in_points: str,
-        in_unit_test: str,
+        in_points: typing.Optional[str],
+        in_unit_test: typing.Optional[str],
         num_points: int,
 ) -> typing.List[DataSplit]:
     '''
@@ -148,34 +159,73 @@ def split_data(
         list[DataSplit] - ordered list that contains a total of num_points
     '''
 
+    remaining_points = num_points
     splits = []
+
     # Unit test should be first, this ensures easily testable incrementing ids
-    with open(in_unit_test) as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            lat = float(row['Latitude'])
-            long = float(row['Longitude'])
-            radius = float(row['R_km'])
-            inside_points = int(row['num businesses'])
-            outside_points = int(row['num extra businesses'])
+    if in_unit_test:
+        with open(in_unit_test) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                lat = float(row['Latitude'])
+                lon = float(row['Longitude'])
+                radius = float(row['R_km'])
+                inside_points = int(row['num businesses'])
+                outside_points = int(row['num extra businesses'])
 
-            inside_split = DataSplit(feature=MapFeature.EVEN_SPREAD, num_points=inside_points, center_point=[
-                                     lat, long], radius=radius)
-            outside_split = DataSplit(feature=MapFeature.EVEN_SPREAD_DONUT, num_points=outside_points, center_point=[
-                                      lat, long], radius=2*radius, extra=radius)
+                inside_split = DataSplit(feature=MapFeature.EVEN_SPREAD, num_points=inside_points, center_point=[
+                    lat, lon], radius=radius)
+                outside_split = DataSplit(feature=MapFeature.EVEN_SPREAD_DONUT, num_points=outside_points, center_point=[
+                    lat, lon], radius=2*radius, extra=radius)
 
-            splits.append(inside_split)
-            splits.append(outside_split)
+                splits.append(inside_split)
+                splits.append(outside_split)
+
+                remaining_points -= inside_points + outside_points
 
     # Evenly split each in_points with the rest of the points requested
+    if in_points:
+        points = []
+        with open(in_points) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                lat = float(row['Latitude'])
+                lon = float(row['Longitude'])
+                radius = float(row['Radius'])
+                points.append((lat, lon, radius))
+
+        if len(points) == 0:
+            # return early
+            return splits
+
+        points_per = int(remaining_points / len(points))
+
+        if points_per < 1:
+            print(f'FAILURE: not enough points to cover in_points')
+
+        for point in points:
+            if remaining_points >= points_per:
+                point_num_points = points_per
+                remaining_points -= points_per
+            elif remaining_points > 0:
+                point_num_points = remaining_points
+                remaining_points = 0
+            else:
+                print(
+                    f'FAILURE: no remaining points left, cannot add splits for: {point}')
+                break
+
+            # TODO: add MALL and STREET
+            splits.append(DataSplit(feature=MapFeature.EVEN_SPREAD, num_points=point_num_points, center_point=(
+                point[0], point[1]), radius=point[2]))
 
     return splits
 
 
 def data_gen(
         out_filename: str,
-        in_points: str,
-        in_unit_test: str,
+        in_points: typing.Optional[str],
+        in_unit_test: typing.Optional[str],
         num_points: int,
         include_split: bool
 ):
@@ -199,7 +249,6 @@ def data_gen(
         else:
             f.write("id,lat,lon\n")
 
-
         id_start = 0
         for i in range(len(splits)):
             points = []
@@ -211,17 +260,32 @@ def data_gen(
             elif split.feature == MapFeature.EVEN_SPREAD_DONUT:
                 points = gen_points(split, id_start, i, include_split)
             else:
-                print(f'FAILURE(unimplemented): unable to generate points for this split; {split}')
-            
+                print(
+                    f'FAILURE(unimplemented): unable to generate points for this split; {split}')
+
             id_start += len(points)
             f.writelines(points)
 
+def pretty_time_delta(seconds):
+    sign_string = '-' if seconds < 0 else ''
+    seconds = abs(int(seconds))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%s%dd%dh%dm%ds' % (sign_string, days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%s%dh%dm%ds' % (sign_string, hours, minutes, seconds)
+    elif minutes > 0:
+        return '%s%dm%ds' % (sign_string, minutes, seconds)
+    else:
+        return '%s%ds' % (sign_string, seconds)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--out_filename", type=pathlib.Path,
                         default="./data.csv", help="filename to write the generated CSV data")
-    parser.add_argument("-p", "--in_points", type=pathlib.Path, default="./most_popular_cities.csv",
+    parser.add_argument("-p", "--in_points", type=pathlib.Path, default="./most_populace_cities.csv",
                         help="filename of CSV file holding places to surround with generated data")
     parser.add_argument("-u", "--in_unit_test", type=pathlib.Path, default="./unit_test.csv",
                         help="filename of CSV file holding unit test data to embed into generated data")
@@ -231,5 +295,9 @@ if __name__ == "__main__":
                         help="Include an extra column, storing the `split`. Useful for debugging.")
     args = parser.parse_args()
 
+    t1 = time.time()
     data_gen(args.out_filename, args.in_points,
              args.in_unit_test, args.num_points, args.include_split)
+    t2 = time.time()
+
+    print('Done. (Duration: ' + pretty_time_delta(t2-t1) + ')')

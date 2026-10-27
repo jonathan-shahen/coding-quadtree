@@ -24,10 +24,11 @@ Generating this data we care about specific features in the dataset
 
 ## How to view on Google Maps
 
-1. Suggest turning on `--include_split`, to allow for colouring data
+1. OPTIONAL: Suggest turning on `--include_split`, to allow for colouring data
 1. Limit the total rows to under 2000
 1. Visit <https://www.google.com/mymaps> and create a new map
 1. Import the CSV file to a new LAYER
+    - OPTIONAL: Change `Uniform Style` to `Styled by split`, to show which split created the point
 
 
 

@@ -8,13 +8,14 @@ The purpose of this repo is to experiment with QuadTrees for storing highly comp
 
 ## Problem Statement
 
-We have a map/location based website, and we have a list of millions of businesses (`N` used to repesent this number) registered with us.
+We have a map/location based website, and we have a list of millions of businesses (`N` used to represent this number) registered with us.
 
 Given a lat/long point `I=(lat,long)` and a radius `R`, use a Geo Quad Tree to answer the following:
 
-1. Return a list of all businesses that fit within that radius `R`
+1. Return a list of $X$ businesses that fit within that radius `R`
     - it is okay to use `circle` or `square` radius.
-2. Return a list of all businesses that fit within that radius `2*R` (exclude the businesses within `R`)
+2. Return a list of $X$ businesses that fit within that radius `2*R` (exclude the businesses within `R`)
+    - If there were more than $X$ businesses in step (1), then start copying those into this list.
 
 ### Assumptions
 
@@ -49,6 +50,13 @@ Data is stored in `leaf` nodes. Non-leaf nodes must have 4 children (sub-dividin
         - see: https://en.wikipedia.org/wiki/Haversine_formula to determine distance between 2 points on a sphere
         - see: http://janmatuschek.de/LatitudeLongitudeBoundingCoordinates to create a min/max lat/long box for `I`+`R`
         - see: https://en.wikipedia.org/wiki/Spherical_coordinate_system general understanding
+- Mall Problem
+    - If we pick a small limit on number of businesses inside a node (i.e. 100) and we come across a Mall
+    - Businesses inside of a Mall will often just put the address of the mall, and thus the GPS location will be the same for all businesses INSIDE of a Mall
+    - If we have 101+ businesses with the same GPS location, then we will have an INFINITE DEPTH QuadTree
+    - Protection needed for this
+    - EXTRA: in countries/states with little/no sales tax, single addresses can be the mailing address of 1000+ businesses
+    - SOLUTION: restrict the minimum area a QuadTree node can cover. Ex: $10 m^2$
 
 ## Implementations
 
