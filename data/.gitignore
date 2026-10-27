@@ -1,2 +1,2 @@
 # ignore any generated data files
-.csv
+*.csv
