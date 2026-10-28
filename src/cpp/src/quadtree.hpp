@@ -94,18 +94,12 @@ namespace QuadTree
         }
 
         /**
-         * Insert a new point into the quadtree
+         * Insert a new point into the QuadTree
          *
          * @param node Pointer to node to try to insert into
-         * @param id Int ID to the point
-         * @param lat Latitude
-         * @param lon Longitude
+         * @param point Reference to point data
          */
-        bool insert(QuadTreeNode *node, int id, float lat, float lon);
-        inline bool insert(QuadTreeNode *node, Point point)
-        {
-            return insert(node, point.id, point.lat, point.lon);
-        }
+        bool insert(QuadTreeNode *node, Point &point);
 
         void subdivide(QuadTreeNode *node);
     };

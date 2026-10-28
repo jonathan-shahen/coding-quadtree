@@ -23,9 +23,7 @@ int main(int argc, char *argv[])
     std::cout << "WARNING: will not start until connected to a Tracy Profiler!\n"
               << std::flush;
     while (!tracy::GetProfiler().IsConnected())
-    {
         std::this_thread::yield();
-    }
 #endif
 
     const QuadTree::QuadTree quadtree(argv[1]);
@@ -34,7 +32,7 @@ int main(int argc, char *argv[])
     quadtree.analyze();
     std::cout << "\n";
 
-    if (argc == 3)
+    if (argc == 3 && strcmp(argv[2], "-q") == 0)
     {
         // Quit after buiding and analysing
         std::cout << "EXITING: early exit parameter found\n";

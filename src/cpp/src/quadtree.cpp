@@ -37,10 +37,8 @@ namespace QuadTree
      *
      * @return TRUE if inserted, FALSE if not inserted
      */
-    bool QuadTree::insert(QuadTreeNode *node, int id, float lat, float lon)
+    bool QuadTree::insert(QuadTreeNode *node, Point &point)
     {
-        Point point{id, lat, lon};
-
         // INSERT: into a LEAF node if there is capacity
         if (node->is_leaf() && node->num_points() < QUAD_TREE__NODE_POINTS_LIMIT)
         {
@@ -64,22 +62,22 @@ namespace QuadTree
         }
 
         // PERFORMANCE: do not call `insert` unless you have to
-        if (_nodes[node->nw].boundary.inside(lat, lon))
+        if (_nodes[node->nw].boundary.inside(point.lat, point.lon))
         {
             insert(&_nodes[node->nw], point);
             return true;
         }
-        if (_nodes[node->ne].boundary.inside(lat, lon))
+        if (_nodes[node->ne].boundary.inside(point.lat, point.lon))
         {
             insert(&_nodes[node->ne], point);
             return true;
         }
-        if (_nodes[node->sw].boundary.inside(lat, lon))
+        if (_nodes[node->sw].boundary.inside(point.lat, point.lon))
         {
             insert(&_nodes[node->sw], point);
             return true;
         }
-        if (_nodes[node->se].boundary.inside(lat, lon))
+        if (_nodes[node->se].boundary.inside(point.lat, point.lon))
         {
             insert(&_nodes[node->se], point);
             return true;
@@ -107,13 +105,8 @@ namespace QuadTree
         node->se = _nodes.size() - 1;
 
         // Move the points into the quadrants
-        Point point;
-
-        while (!node->points.empty())
+        for (Point &point : node->points)
         {
-            point = node->points.back();
-            node->points.pop_back();
-
             // PERFORMANCE: do not call `insert` unless you have to
             if (_nodes[node->nw].boundary.inside(point.lat, point.lon))
             {
@@ -137,6 +130,7 @@ namespace QuadTree
             }
             throw std::runtime_error("Point has no place to go: " + point.id);
         }
+        node->points.clear();
     }
 
     void QuadTree::build_tree(std::string csvfile)
@@ -160,9 +154,7 @@ namespace QuadTree
 
         int row = 0;
         std::string token;
-        int id = 0;
-        float lat = 0;
-        float lon = 0;
+        Point point{};
         std::from_chars_result r;
         std::size_t sep1, sep2, sep3;
         for (std::string line; getline(file, line);)
@@ -189,13 +181,13 @@ namespace QuadTree
             auto lat_sv = sv.substr(sep1 + 1, sep2 - sep1 - 1);
             auto lon_sv = sv.substr(sep2 + 1, sep3 - sep2 - 1);
 
-            r = std::from_chars(id_sv.data(), id_sv.data() + id_sv.size(), id);
+            r = std::from_chars(id_sv.data(), id_sv.data() + id_sv.size(), point.id);
             if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
-            r = std::from_chars(lat_sv.data(), lat_sv.data() + lat_sv.size(), lat);
+            r = std::from_chars(lat_sv.data(), lat_sv.data() + lat_sv.size(), point.lat);
             if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
-            r = std::from_chars(lon_sv.data(), lon_sv.data() + lon_sv.size(), lon);
+            r = std::from_chars(lon_sv.data(), lon_sv.data() + lon_sv.size(), point.lon);
             if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
 
@@ -204,7 +196,7 @@ namespace QuadTree
                 std::cout << std::format("PROGRESS (row {}) id/lat/lon: {}/{}/{}\n", row, id, lat, lon);
 #endif
 
-            insert(root_node(), id, lat, lon);
+            insert(root_node(), point);
             _count_points++;
 
             row++;
