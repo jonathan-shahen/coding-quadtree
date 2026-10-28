@@ -13,6 +13,7 @@ namespace QuadTree
 
     SearchResults QuadTree::find(float lat, float lon, float radius, int limit) const
     {
+        ZoneScopedN("Quadtree Find");
         // implementation
         std::cout << std::format("TODO: find({},{},{},{})\n", lat, lon, radius, limit);
         return SearchResults();
@@ -27,7 +28,7 @@ namespace QuadTree
             return false;
         }
 
-        std::cout << "Loading QuadTree from: " << csvfile << '\n';
+        std::cout << "Building QuadTree from: " << csvfile << '\n';
 
         return false;
     }
@@ -38,6 +39,7 @@ namespace QuadTree
      */
     bool QuadTree::insert(QuadTreeNode *node, int id, float lat, float lon)
     {
+        ZoneScopedN("Quadtree Insert");
         // SKIP: if doesn't fit in the boundary
         if (!node->boundary.inside(lat, lon))
             return false;
@@ -80,6 +82,7 @@ namespace QuadTree
 
     void QuadTree::subdivide(QuadTreeNode *node)
     {
+        ZoneScopedN("Quadtree subdivide");
         _count_subdivides++;
 
         // Setup each quadrant
@@ -118,6 +121,7 @@ namespace QuadTree
 
     void QuadTree::build_tree(std::string csvfile)
     {
+        ZoneScopedN("Quadtree Build Tree");
         auto t1 = std::chrono::high_resolution_clock::now();
         std::cout << "=================================================\n";
         std::cout << "Building QuadTree from: " << csvfile << '\n';
@@ -186,6 +190,7 @@ namespace QuadTree
 
     void QuadTree::analyze() const
     {
+        ZoneScopedN("Quadtree Analyze");
         auto t1 = std::chrono::high_resolution_clock::now();
         int count_empty_leaves = 0;
         constexpr std::size_t max_point_counts = 15;

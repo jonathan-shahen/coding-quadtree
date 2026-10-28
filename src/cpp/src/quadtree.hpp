@@ -18,6 +18,8 @@
 #include <chrono>
 #include <list>
 
+#include <tracy/Tracy.hpp>
+
 #include "search_results.hpp"
 #include "geo_boundary.hpp"
 #include "utils.hpp"

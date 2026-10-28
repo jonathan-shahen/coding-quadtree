@@ -6,10 +6,11 @@ CXXFLAGS := -std=c++23 -Wall -Wextra -pedantic\
 LDLIBS :=
 
 ifeq ($(OS),Windows_NT)
-    LDLIBS += -lws2_32 -ldbghelp
+    LDLIBS += -lws2_32 -ldbghelp -lsecur32
 endif
 
 TARGET := bin/quadtree_search
+TRACY_OBJ := bin/TracyClient.o
 
 SRC := \
     src/main.cpp \
@@ -27,8 +28,12 @@ debug: CXXFLAGS += -g -O0
 debug: $(TARGET)
 
 profile: CXXFLAGS += -O2 -g -DTRACY_ENABLE
-profile: SRC += $(TRACY_SRC)
+profile: $(TRACY_OBJ)
+profile: SRC += $(TRACY_OBJ)
 profile: $(TARGET)
+
+$(TRACY_OBJ):
+	$(CXX) -O3 -g -DTRACY_ENABLE -I../../modules/tracy/public -w -c $(TRACY_SRC) -o $(TRACY_OBJ)
 
 $(TARGET):
 	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET) $(LDLIBS)
