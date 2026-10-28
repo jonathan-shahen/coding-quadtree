@@ -17,6 +17,8 @@
 #include <vector>
 #include <chrono>
 #include <list>
+#include <string_view>
+#include <charconv>
 
 #include <tracy/Tracy.hpp>
 
@@ -48,7 +50,9 @@ namespace QuadTree
         int se = -1;
 
     public:
-        QuadTreeNode(GeoBoundary boundary) : boundary(boundary) {}
+        QuadTreeNode(GeoBoundary boundary) : boundary(boundary) {
+            points.reserve(QUAD_TREE__NODE_POINTS_LIMIT);
+        }
 
         /** Returns TRUE if this node is a LEAF node (i.e. contains IDs) */
         inline bool is_leaf() const

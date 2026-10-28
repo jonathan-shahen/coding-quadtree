@@ -39,11 +39,6 @@ namespace QuadTree
      */
     bool QuadTree::insert(QuadTreeNode *node, int id, float lat, float lon)
     {
-        ZoneScopedN("Quadtree Insert");
-        // SKIP: if doesn't fit in the boundary
-        if (!node->boundary.inside(lat, lon))
-            return false;
-
         Point point{id, lat, lon};
 
         // INSERT: into a LEAF node if there is capacity
@@ -68,21 +63,33 @@ namespace QuadTree
             this->subdivide(node);
         }
 
-        if (insert(&_nodes[node->nw], point))
+        // PERFORMANCE: do not call `insert` unless you have to
+        if (_nodes[node->nw].boundary.inside(lat, lon))
+        {
+            insert(&_nodes[node->nw], point);
             return true;
-        if (insert(&_nodes[node->ne], point))
+        }
+        if (_nodes[node->ne].boundary.inside(lat, lon))
+        {
+            insert(&_nodes[node->ne], point);
             return true;
-        if (insert(&_nodes[node->sw], point))
+        }
+        if (_nodes[node->sw].boundary.inside(lat, lon))
+        {
+            insert(&_nodes[node->sw], point);
             return true;
-        if (insert(&_nodes[node->se], point))
+        }
+        if (_nodes[node->se].boundary.inside(lat, lon))
+        {
+            insert(&_nodes[node->se], point);
             return true;
+        }
 
         return false;
     }
 
     void QuadTree::subdivide(QuadTreeNode *node)
     {
-        ZoneScopedN("Quadtree subdivide");
         _count_subdivides++;
 
         // Setup each quadrant
@@ -107,14 +114,27 @@ namespace QuadTree
             point = node->points.back();
             node->points.pop_back();
 
-            if (insert(&_nodes[node->nw], point))
+            // PERFORMANCE: do not call `insert` unless you have to
+            if (_nodes[node->nw].boundary.inside(point.lat, point.lon))
+            {
+                insert(&_nodes[node->nw], point);
                 continue;
-            if (insert(&_nodes[node->ne], point))
+            }
+            if (_nodes[node->ne].boundary.inside(point.lat, point.lon))
+            {
+                insert(&_nodes[node->ne], point);
                 continue;
-            if (insert(&_nodes[node->sw], point))
+            }
+            if (_nodes[node->sw].boundary.inside(point.lat, point.lon))
+            {
+                insert(&_nodes[node->sw], point);
                 continue;
-            if (insert(&_nodes[node->se], point))
+            }
+            if (_nodes[node->se].boundary.inside(point.lat, point.lon))
+            {
+                insert(&_nodes[node->se], point);
                 continue;
+            }
             throw std::runtime_error("Point has no place to go: " + point.id);
         }
     }
@@ -139,41 +159,52 @@ namespace QuadTree
         file.open(csvfile);
 
         int row = 0;
+        std::string token;
+        int id = 0;
+        float lat = 0;
+        float lon = 0;
+        std::from_chars_result r;
+        std::size_t sep1, sep2, sep3;
         for (std::string line; getline(file, line);)
         {
-            ZoneScopedN("Quadtree Formatting Row");
             // Skip the header row
             if (row == 0)
             {
                 row++;
                 continue;
             }
-            std::stringstream line_stream(line);
-            std::string token;
 
             // Must have atleast 5 characters for a valid line
             if (line.length() < 5)
                 throw std::runtime_error("Invalid CSV Line: " + line);
 
-            // CSV Header: id,lat,lon
-            if (!getline(line_stream, token, ','))
+            // PERFORMANCE: do not touch without profiling
+            std::string_view sv(line);
+            sep1 = sv.find(',');
+            sep2 = sv.find(',', sep1 + 1);
+            // Can be npos (massive UL, thus no logic needed)
+            sep3 = sv.find(',', sep2 + 1);
+
+            auto id_sv = sv.substr(0, sep1);
+            auto lat_sv = sv.substr(sep1 + 1, sep2 - sep1 - 1);
+            auto lon_sv = sv.substr(sep2 + 1, sep3 - sep2 - 1);
+
+            r = std::from_chars(id_sv.data(), id_sv.data() + id_sv.size(), id);
+            if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
-            int id = std::stod(token);
-            if (!getline(line_stream, token, ','))
+            r = std::from_chars(lat_sv.data(), lat_sv.data() + lat_sv.size(), lat);
+            if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
-            float lat = std::stof(token);
-            if (!getline(line_stream, token, ','))
+            r = std::from_chars(lon_sv.data(), lon_sv.data() + lon_sv.size(), lon);
+            if (r.ec != std::errc())
                 throw std::runtime_error("Invalid CSV Line: " + line);
-            float lon = std::stof(token);
 
 #ifdef DEBUG
             if (row % 1000 == 0)
-            {
                 std::cout << std::format("PROGRESS (row {}) id/lat/lon: {}/{}/{}\n", row, id, lat, lon);
-            }
 #endif
 
-            this->insert(root_node(), id, lat, lon);
+            insert(root_node(), id, lat, lon);
             _count_points++;
 
             row++;
