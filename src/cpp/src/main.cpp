@@ -13,16 +13,35 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc < 2 || argc > 3)
     {
-        std::cerr << "Usage: " << argv[0] << " <points.csv>\n";
+        std::cerr << "Usage: " << argv[0] << " <points.csv> [-q]\n";
         return 1;
     }
+
+    #ifdef TRACY_ENABLE
+    while (!tracy::GetProfiler().IsConnected())
+    {
+        std::this_thread::yield();
+    }
+    #endif
+
     const QuadTree::QuadTree quadtree(argv[1]);
 
     std::cout << "\n";
     quadtree.analyze();
     std::cout << "\n";
+
+    if(argc == 3) {
+        // Quit after buiding and analysing
+        std::cout << "EXITING: early exit parameter found\n";
+
+        // Flush Tracy before exiting
+        FrameMark;
+        TracyMessageL("Early exit");
+
+        return 0;
+    }
 
     std::string line;
     while (true)

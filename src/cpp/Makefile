@@ -1,45 +1,115 @@
 CXX := g++
 
-CXXFLAGS := -std=c++23 -Wall -Wextra -pedantic\
+MODE ?= release
+
+COMMON_FLAGS := \
+	-std=c++23 \
+	-MMD -MP \
+	-Wall \
+	-Wextra \
+	-pedantic \
 	-I../../modules/tracy/public
+
+BUILD_DIR := build/$(MODE)
+TARGET := $(BUILD_DIR)/quadtree_search
+
+SRC := $(wildcard src/*.cpp)
+
+OBJ := $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
+DEP := $(OBJ:.o=.d)
 
 LDLIBS :=
 
-ifeq ($(OS),Windows_NT)
-    LDLIBS += -lws2_32 -ldbghelp -lsecur32
+# --------------------------------------------------
+# Build mode configuration
+# --------------------------------------------------
+
+CXXFLAGS := $(COMMON_FLAGS)
+
+ifeq ($(MODE),release)
+	CXXFLAGS += -O3
 endif
 
-TARGET := bin/quadtree_search
-TRACY_OBJ := bin/TracyClient.o
+ifeq ($(MODE),debug)
+	CXXFLAGS += -O0 -g
+endif
 
-SRC := \
-    src/main.cpp \
-    src/quadtree.cpp \
-    src/utils.cpp
+ifeq ($(MODE),profile)
+	CXXFLAGS += -O2 -g -DTRACY_ENABLE
 
-TRACY_SRC := ../../modules/tracy/public/TracyClient.cpp
+	TRACY_OBJ := $(BUILD_DIR)/TracyClient.o
 
-.PHONY: release debug profile clean
+	OBJ += $(TRACY_OBJ)
 
-release: CXXFLAGS += -O3
-release: $(TARGET)
+	ifeq ($(OS),Windows_NT)
+		LDLIBS += -lws2_32 -ldbghelp -lsecur32
+	endif
+endif
 
-debug: CXXFLAGS += -g -O0
-debug: $(TARGET)
+# --------------------------------------------------
+# Default target
+# --------------------------------------------------
 
-profile: CXXFLAGS += -O2 -g -DTRACY_ENABLE
-profile: $(TRACY_OBJ)
-profile: SRC += $(TRACY_OBJ)
-profile: $(TARGET)
+all: $(TARGET)
 
-$(TRACY_OBJ):
-	$(CXX) -O3 -g -DTRACY_ENABLE -I../../modules/tracy/public -w -c $(TRACY_SRC) -o $(TRACY_OBJ)
+# --------------------------------------------------
+# Compile project source files
+# --------------------------------------------------
 
-$(TARGET):
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET) $(LDLIBS)
+$(BUILD_DIR)/%.o: src/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-run: $(TARGET)
-	./$(TARGET) ../../data/example_data.csv
+# --------------------------------------------------
+# Compile Tracy separately
+# --------------------------------------------------
+
+$(BUILD_DIR)/TracyClient.o: ../../modules/tracy/public/TracyClient.cpp | $(BUILD_DIR)
+	$(CXX) -O2 -g -DTRACY_ENABLE -I../../modules/tracy/public -w -c $< -o $@
+
+# --------------------------------------------------
+# Link executable
+# --------------------------------------------------
+
+$(TARGET): $(OBJ)
+	$(CXX) $(OBJ) -o $@ $(LDLIBS)
+
+# --------------------------------------------------
+# Create build directory
+# --------------------------------------------------
+
+$(BUILD_DIR):
+	mkdir -p $@
+
+# --------------------------------------------------
+# Convenience targets
+# --------------------------------------------------
+
+release:
+	$(MAKE) MODE=release all
+
+debug:
+	$(MAKE) MODE=debug all
+
+profile:
+	$(MAKE) MODE=profile all
+
+ARGS ?=
+run:
+	./$(TARGET) ../../data/example_data.csv $(ARGS)
+
+run-release:
+	$(MAKE) MODE=release run
+
+run-debug:
+	$(MAKE) MODE=debug run
+
+# Add the `-q` flag to automatically quit
+run-profile:
+	$(MAKE) MODE=profile ARGS="-q" run
 
 clean:
-	rm -f $(TARGET)
+	rm -rf build
+
+.PHONY: all release debug profile run run-release run-debug run-profile clean
+
+-include $(DEP)

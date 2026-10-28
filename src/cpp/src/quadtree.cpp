@@ -141,6 +141,7 @@ namespace QuadTree
         int row = 0;
         for (std::string line; getline(file, line);)
         {
+            ZoneScopedN("Quadtree Formatting Row");
             // Skip the header row
             if (row == 0)
             {
@@ -235,8 +236,7 @@ namespace QuadTree
                                      i, node_i, std::to_string(_nodes.size()).length(),
                                      commaify(node.points.size()),
                                      commaify(node.boundary.area()),
-                                     node.boundary.to_string()
-                                    );
+                                     node.boundary.to_string());
             i++;
         }
         std::cout << "=================================================\n";
