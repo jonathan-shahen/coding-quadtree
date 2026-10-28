@@ -31,7 +31,7 @@ ifeq ($(MODE),release)
 endif
 
 ifeq ($(MODE),debug)
-	CXXFLAGS += -O0 -g
+	CXXFLAGS += -O0 -g -DDEBUG
 endif
 
 ifeq ($(MODE),profile)

@@ -6,6 +6,7 @@
 #define QUAD_TREE__NODE_MIN_AREA 10
 
 #ifdef DEBUG
+#undef QUAD_TREE__NODE_POINTS_LIMIT
 #define QUAD_TREE__NODE_POINTS_LIMIT 3
 #endif
 
@@ -19,6 +20,7 @@
 #include <list>
 #include <string_view>
 #include <charconv>
+#include <queue>
 
 #include <tracy/Tracy.hpp>
 
@@ -50,7 +52,8 @@ namespace QuadTree
         int se = -1;
 
     public:
-        QuadTreeNode(GeoBoundary boundary) : boundary(boundary) {
+        QuadTreeNode(GeoBoundary boundary) : boundary(boundary)
+        {
             points.reserve(QUAD_TREE__NODE_POINTS_LIMIT);
         }
 
@@ -78,7 +81,7 @@ namespace QuadTree
 
     public:
         QuadTree(std::string csvfilepath);
-        SearchResults find(float lat, float lon, float radius, int limit) const;
+        SearchResults find(float lat, float lon, float radius, std::size_t limit) const;
 
         /** Performs an analysis of the QuadTree and prints the results to std::cout */
         void analyze() const;

@@ -11,12 +11,103 @@ namespace QuadTree
         }
     }
 
-    SearchResults QuadTree::find(float lat, float lon, float radius, int limit) const
+    SearchResults QuadTree::find(float lat, float lon, float radius, std::size_t limit) const
     {
-        ZoneScopedN("Quadtree Find");
-        // implementation
-        std::cout << std::format("TODO: find({},{},{},{})\n", lat, lon, radius, limit);
-        return SearchResults();
+        ZoneScopedN("QuadTree Find");
+        SearchResults results{};
+        GeoBoundary boundary{lat, lon, radius};
+        GeoBoundary boundary2{lat, lon, 2 * radius};
+
+        if (!_nodes[0].boundary.intersect(boundary2))
+        {
+            // SHORTCUT: lat/lon must intersect with the entire globe
+            std::cerr << std::format("ERROR: invalid GPS coord ({},{}), does not intersect with the world.\n", lat, lon);
+            return results;
+        }
+
+#ifdef DEBUG
+        int count_nodes = 0;
+#endif
+        std::vector<int> intersecting_leaf_nodes;
+        std::queue<int> node_queue;
+        node_queue.push(0);
+
+        while (!node_queue.empty())
+        {
+#ifdef DEBUG
+            count_nodes++;
+#endif
+            int node_i = node_queue.front();
+            node_queue.pop();
+            const QuadTreeNode &node = _nodes[node_i];
+
+            if (node.is_leaf())
+            {
+                intersecting_leaf_nodes.push_back(node_i);
+                continue;
+            }
+
+            // Find any that intersect with 2*radius
+            if (_nodes[node.nw].boundary.intersect(boundary2))
+                node_queue.push(node.nw);
+            if (_nodes[node.ne].boundary.intersect(boundary2))
+                node_queue.push(node.ne);
+            if (_nodes[node.sw].boundary.intersect(boundary2))
+                node_queue.push(node.sw);
+            if (_nodes[node.se].boundary.intersect(boundary2))
+                node_queue.push(node.se);
+        }
+
+        std::vector<Point> boundary_points;
+        std::vector<Point> boundary2_points;
+
+        for (auto &i : intersecting_leaf_nodes)
+        {
+            for (auto &point : _nodes[i].points)
+            {
+                if (boundary.inside(point.lat, point.lon))
+                {
+                    // inside both boundaries, but only count for boundary (creating donut shape)
+                    boundary_points.push_back(point);
+                }
+                else if (boundary2.inside(point.lat, point.lon))
+                {
+                    // only inside boundary 2
+                    boundary2_points.push_back(point);
+                }
+            }
+        }
+
+        // Collect Results
+        for (auto &point : boundary_points)
+        {
+            if (results.found_ids.size() < limit)
+                results.found_ids.push_back(point.id);
+            else if (results.extra_ids.size() < limit)
+                // grab any left over boundary ids for extra_ids
+                results.extra_ids.push_back(point.id);
+            else
+                // both are filled up
+                break;
+        }
+        for (auto &point : boundary2_points)
+        {
+            if (results.extra_ids.size() < limit)
+                // grab boundary2 ids for extra_ids
+                results.extra_ids.push_back(point.id);
+            else
+                // filled up
+                break;
+        }
+
+#ifdef DEBUG
+        std::cout << std::format("  Intersecting Leaf Nodes: {}\n", intersecting_leaf_nodes.size());
+        std::cout << std::format("           Searched Nodes: {}\n", count_nodes);
+        std::cout << std::format("       Points in boundary: {}\n", boundary_points.size());
+        std::cout << std::format("     Points in 2*boundary: {}\n", boundary2_points.size());
+#endif
+
+        return results;
     }
 
     bool QuadTree::try_load_tree(std::string csvfile)
@@ -135,7 +226,7 @@ namespace QuadTree
 
     void QuadTree::build_tree(std::string csvfile)
     {
-        ZoneScopedN("Quadtree Build Tree");
+        ZoneScopedN("QuadTree Build Tree");
         auto t1 = std::chrono::high_resolution_clock::now();
         std::cout << "=================================================\n";
         std::cout << "Building QuadTree from: " << csvfile << '\n';
@@ -193,7 +284,7 @@ namespace QuadTree
 
 #ifdef DEBUG
             if (row % 1000 == 0)
-                std::cout << std::format("PROGRESS (row {}) id/lat/lon: {}/{}/{}\n", row, id, lat, lon);
+                std::cout << std::format("PROGRESS (row {}) id/lat/lon: {}/{}/{}\n", row, point.id, point.lat, point.lon);
 #endif
 
             insert(root_node(), point);

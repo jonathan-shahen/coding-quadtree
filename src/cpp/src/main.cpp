@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 
             const auto result = quadtree.find(latitude, longitude, radiusKm, limit);
 
-            std::cout << "Result: " << result << '\n';
+            std::cout << result << '\n';
         }
         catch (const std::exception &)
         {

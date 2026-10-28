@@ -15,6 +15,9 @@
 ### How to Build+Run Sample data
 
 1. `make run`
+    - You can find Unit Test data: [unit_test.csv](../../data/unit_test.csv)
+    - Input: `-68.576446,77.968737,50,100`
+    - Output: `{"ids":[0,1,2...,29], "extra":[30,31,32,...,99]}` (`...` added to reduce text, all ids should be in output)
 
 ### Run Custom Data
 
@@ -46,4 +49,5 @@
 
 ## TODOS
 
-- Add unit testing
+-[ ] Add unit testing
+-[ ] Load build tree from binary (compare to build time)
