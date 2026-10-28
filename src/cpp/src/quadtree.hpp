@@ -16,9 +16,11 @@
 #include <sstream>
 #include <vector>
 #include <chrono>
+#include <list>
 
 #include "search_results.hpp"
 #include "geo_boundary.hpp"
+#include "utils.hpp"
 
 namespace QuadTree
 {
@@ -71,6 +73,9 @@ namespace QuadTree
     public:
         QuadTree(std::string csvfilepath);
         SearchResults find(float lat, float lon, float radius, int limit) const;
+
+        /** Performs an analysis of the QuadTree and prints the results to std::cout */
+        void analyze() const;
 
     private:
         bool try_load_tree(std::string csvfile);

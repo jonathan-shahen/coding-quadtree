@@ -3,6 +3,8 @@
 #define EARTH_RADIUS 6378.1
 
 #include <numbers>
+#include <iostream>
+#include <cmath>
 
 namespace QuadTree
 {
@@ -27,15 +29,25 @@ namespace QuadTree
                 (lon >= lon_min && lon <= lon_max));
         }
 
-        /** @return Approximate Area in m^2. */
-        inline float area() const
+        /** Better approximate, longitude needed scaling */
+        inline double area() const
         {
-            // approx area = length * width
-            return (
-                // Delta degrees -> to radians -> to km -> to m
-                abs(lat_max - lat_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) * (1000) *
-                // Delta degrees -> to radians -> to km -> to m
-                abs(lon_max - lon_min) * (std::numbers::pi / 180) * (EARTH_RADIUS) * (1000));
+            constexpr double DEG_TO_RAD = std::numbers::pi / 180.0;
+
+            const double lat_delta = std::abs(lat_max - lat_min);
+            const double lon_delta = std::abs(lon_max - lon_min);
+
+            // Use the centre latitude for longitude scaling.
+            const double mid_lat = (lat_min + lat_max) / 2.0;
+
+            const double height_m =
+                lat_delta * DEG_TO_RAD * EARTH_RADIUS * 1000.0;
+
+            const double width_m =
+                lon_delta * DEG_TO_RAD * EARTH_RADIUS * 1000.0 *
+                std::cos(mid_lat * DEG_TO_RAD);
+
+            return width_m * height_m;
         }
 
         inline GeoBoundary nw() const
@@ -54,6 +66,15 @@ namespace QuadTree
         {
             return GeoBoundary(lat_min + (lat_max - lat_min) / 2, lat_max, lon_min + (lon_max - lon_min) / 2, lon_max);
         }
+
+        inline std::string to_string() const
+        {
+            return std::format("<GeoBoundary: lat:[{},{}], lon:[{},{}]>", lat_min, lat_max, lon_min, lon_max);
+        }
     };
 
+    inline std::ostream &operator<<(std::ostream &os, const GeoBoundary &boundary)
+    {
+        return os << boundary.to_string();
+    }
 }

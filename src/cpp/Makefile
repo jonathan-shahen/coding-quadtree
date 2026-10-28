@@ -1,22 +1,37 @@
-# Makefile
-
 CXX := g++
-# Do not put optimization flags here, instead ONLY add them to ALL. Debug requires NO optimizations for break points
-CXXFLAGS := -std=c++23 -Wall -Wextra -pedantic
+
+CXXFLAGS := -std=c++23 -Wall -Wextra -pedantic\
+	-I../../modules/tracy/public
+
+LDLIBS :=
+
+ifeq ($(OS),Windows_NT)
+    LDLIBS += -lws2_32 -ldbghelp
+endif
 
 TARGET := bin/quadtree_search
-SRC := src/main.cpp src/quadtree.cpp
 
-.PHONY: all clean run
+SRC := \
+    src/main.cpp \
+    src/quadtree.cpp \
+    src/utils.cpp
 
-all: CXXFLAGS += -O2
-all: $(TARGET)
+TRACY_SRC := ../../modules/tracy/public/TracyClient.cpp
 
-debug: CXXFLAGS += -g
+.PHONY: release debug profile clean
+
+release: CXXFLAGS += -O3
+release: $(TARGET)
+
+debug: CXXFLAGS += -g -O0
 debug: $(TARGET)
 
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET)
+profile: CXXFLAGS += -O2 -g -DTRACY_ENABLE
+profile: SRC += $(TRACY_SRC)
+profile: $(TARGET)
+
+$(TARGET):
+	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET) $(LDLIBS)
 
 run: $(TARGET)
 	./$(TARGET) ../../data/example_data.csv

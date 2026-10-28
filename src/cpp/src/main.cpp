@@ -6,6 +6,9 @@
 #include <stdexcept>
 #include <time.h>
 
+// PROFILER
+#include <tracy/Tracy.hpp>
+
 #include "quadtree.hpp"
 
 int main(int argc, char *argv[])
@@ -15,12 +18,10 @@ int main(int argc, char *argv[])
         std::cerr << "Usage: " << argv[0] << " <points.csv>\n";
         return 1;
     }
-
-    // std::locale::global(std::locale("en-US"));
-
-    std::cout << "Starting\n";
     const QuadTree::QuadTree quadtree(argv[1]);
 
+    std::cout << "\n";
+    quadtree.analyze();
     std::cout << "\n";
 
     std::string line;
