@@ -60,14 +60,22 @@ Data is stored in `leaf` nodes. Non-leaf nodes must have 4 children (sub-dividin
 
 ## Implementations
 
+1. [C++](src/cpp/README.md)
 1. [Rust](src/rust/README.md)
 1. [Go](src/go/README.md)
-1. [C++](src/cpp/README.md)
 
 ## Results
 
-
+| Implementation | Num Points    | Build Time (s) | Memory (GB) |
+| -------------- | ------------- | -------------- | ----------- |
+| C++            | 5,000,000     | 0.994492       | todo        |
+| C++            | 10,000,000    | 1.995073       | todo        |
+| C++            | 100,000,000   | todo           | todo        |
+| C++            | 1,000,000,000 | todo           | todo        |
 
 ## AI Statement
+
+The intent of this project is a passion project.
+It is my feeling that AI solving the problem for me reduces my enjoyment.
 
 This project was developed by Dr. Jonathan Shahen with no help from A.I.
