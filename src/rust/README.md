@@ -1,42 +1,52 @@
 # Rust Implementation for Geo-Business Radius Lookup
+## Building and Running
 
-## How to run
+### Prerequisites
 
-1. `./quadtree [options] <csv data>`
-    - When the program starts up, it will build or load a cahced version of the quadtree
-    - A prompt will ask you for coords and radius, it will then return a list of ids in `R` and a list of extra ids
+- g++ and make
+    - For Windows [MSYS2](https://www.msys2.org/) is a useful installer for mingw tooling
+- OPTIONAL(profiling): recursively pull the repo to get `Tracy`
+
+### How to build
+
+1. `cargo build`
+
+### How to Build+Run Sample data
+
+1. `cargo run -- ../../data/unit_test.csv`
+    - You can find Unit Test data: [unit_test.csv](../../data/unit_test.csv)
+    - Input: `-68.576446,77.968737,50,100`
+    - Output: `{"ids":[0,1,2...,29], "extra":[30,31,32,...,99]}` (`...` added to reduce text, all ids should be in output)
+
+### Run Custom Data
+
+1. See [README](../../data/README.md) to generate your own data
+1. (in `src/cpp` folder) `./build/release/quadtree_search ../../data/data.csv`
+    - update `data.csv` if you named yours different
 
 
-### Options
 
-- `--no-cache`
-- `--sort`
-- `--unit-test [csv-file]`
+## Developers 
+### How to Debug
 
-### Caching
+- `make debug`
+- In VSCode
+    - Setup all C++ extensions (see Microsoft publisher)
+    - Go to Debugging tab
+    - Click on `(Windows) Debug`
+        - Small tweaks needed for Linux/Mac for paths
 
-This program builds the QuadTree and then writes a cached version to disk.
-Next time you run the program, it will try to load the cached version, if that is not possible, then it will rebuild the tree.
+### How to Profile
 
-You can turn off the feature by using `--no-cache`
+- `make profile`
+- Download the Tracy v0.14.1 binaries for your system
+- run `tracy-profiler.exe`
+- Connect to `localhost`
+- `make run-profile`
+    - CTRL-C once in the infinite loop
+- View the profile results
 
-### Manual Verification
+## TODOS
 
-A special set of coords + radius are programmed in [unit_test.csv](../data/unit_test.csv).
-Use these to ensure the response is correct.
-
-The ids are the first ones generated, thus the return should be
-
-```
-businesses: 1,2,3,4,...,30
-extra: 31,32,33,34,...,100
-```
-
-To get the ids sorted, add the option `--sort` (but do not use this option during performance tests)
-
-### Automatic Verification
-This will return a report if it was correct and then exit.
-
-```
-./quadtree --unit-test ../../data/unit_test.csv ../../data/data.csv
-```
+-[ ] Add unit testing
+-[ ] Load build tree from binary (compare to build time)

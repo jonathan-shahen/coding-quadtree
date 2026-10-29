@@ -26,10 +26,10 @@ int main(int argc, char *argv[])
         std::this_thread::yield();
 #endif
 
-    const QuadTree::QuadTree quadtree(argv[1]);
+    const QuadTree::QuadTree quad_tree(argv[1]);
 
     std::cout << "\n";
-    quadtree.analyze();
+    quad_tree.analyze();
     std::cout << "\n";
 
     if (argc == 3 && strcmp(argv[2], "-q") == 0)
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
             const double radiusKm = std::stod(radiusStr);
             const double limit = std::stod(limitStr);
 
-            const auto result = quadtree.find(latitude, longitude, radiusKm, limit);
+            const auto result = quad_tree.find(latitude, longitude, radiusKm, limit);
 
             std::cout << result << '\n';
         }
