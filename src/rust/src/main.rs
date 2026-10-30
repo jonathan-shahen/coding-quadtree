@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let lat = parse_or_continue!(cols[0], f32, "latitude");
         let lon = parse_or_continue!(cols[1], f32, "longitude");
         let radius = parse_or_continue!(cols[2], f32, "radius");
-        let limit = parse_or_continue!(cols[3], u32, "limit");
+        let limit = parse_or_continue!(cols[3], usize, "limit");
 
         let result = quad_tree.find(lat, lon, radius, limit)?;
 

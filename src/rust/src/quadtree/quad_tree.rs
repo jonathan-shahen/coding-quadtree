@@ -52,9 +52,108 @@ impl QuadTree {
         lat: f32,
         lon: f32,
         radius: f32,
-        limit: u32,
+        limit: usize,
     ) -> Result<SearchResults, Box<dyn std::error::Error>> {
         let mut results = SearchResults::default();
+
+        // ZoneScopedN("QuadTree Find");
+        let boundary = GeoBoundary::from_center_point(lat, lon, radius);
+        let boundary2 = GeoBoundary::from_center_point(lat, lon, 2.0 * radius);
+
+        if !self.nodes[0].boundary.intersect(&boundary2) {
+            // SHORTCUT: lat/lon must intersect with the entire globe
+            eprintln!(
+                "ERROR: invalid GPS coord ({},{}), does not intersect with the world.",
+                lat, lon
+            );
+            return Ok(results);
+        }
+
+        let mut count_nodes: usize = 0;
+        let mut intersecting_leaf_nodes: Vec<usize> = Vec::new();
+        let mut node_queue: VecDeque<usize> = VecDeque::new();
+        node_queue.push_back(0);
+
+        while !node_queue.is_empty() {
+            count_nodes += 1;
+            let node_i = node_queue.pop_front().ok_or("No Front")?;
+
+            if self.nodes[node_i].is_leaf() {
+                intersecting_leaf_nodes.push(node_i);
+                continue;
+            }
+
+            // Find any that intersect with 2*radius
+            if self.nodes[self.nodes[node_i].nw as usize]
+                .boundary
+                .intersect(&boundary2)
+            {
+                node_queue.push_back(self.nodes[node_i].nw as usize);
+            }
+            if self.nodes[self.nodes[node_i].ne as usize]
+                .boundary
+                .intersect(&boundary2)
+            {
+                node_queue.push_back(self.nodes[node_i].ne as usize);
+            }
+            if self.nodes[self.nodes[node_i].sw as usize]
+                .boundary
+                .intersect(&boundary2)
+            {
+                node_queue.push_back(self.nodes[node_i].sw as usize);
+            }
+            if self.nodes[self.nodes[node_i].se as usize]
+                .boundary
+                .intersect(&boundary2)
+            {
+                node_queue.push_back(self.nodes[node_i].se as usize);
+            }
+        }
+
+        let mut boundary_points: Vec<Point> = Vec::new();
+        let mut boundary2_points: Vec<Point> = Vec::new();
+
+        for i in &intersecting_leaf_nodes {
+            for point in &self.nodes[*i].points {
+                if boundary.inside(point.lat, point.lon) {
+                    // inside both boundaries, but only count for boundary (creating donut shape)
+                    boundary_points.push(*point);
+                } else if boundary2.inside(point.lat, point.lon) {
+                    // only inside boundary 2
+                    boundary2_points.push(*point);
+                }
+            }
+        }
+
+        // Collect Results
+        for point in &boundary_points {
+            if results.found_ids.len() < limit {
+                results.found_ids.push(point.id);
+            } else if results.extra_ids.len() < limit {
+                // grab any left over boundary ids for extra_ids
+                results.extra_ids.push(point.id);
+            } else {
+                // both are filled up
+                break;
+            }
+        }
+        for point in &boundary2_points {
+            if results.extra_ids.len() < limit {
+                // grab boundary2 ids for extra_ids
+                results.extra_ids.push(point.id);
+            } else {
+                // filled up
+                break;
+            }
+        }
+
+        println!(
+            "  Intersecting Leaf Nodes: {}",
+            intersecting_leaf_nodes.len()
+        );
+        println!("           Searched Nodes: {}", count_nodes);
+        println!("       Points in boundary: {}", boundary_points.len());
+        println!("     Points in 2*boundary: {}", boundary2_points.len());
 
         Ok(results)
     }
@@ -122,7 +221,7 @@ impl QuadTree {
         top_point_counts.push_back(0);
 
         for i in 0..self.nodes.len() {
-            if (self.nodes[i].is_leaf() && self.nodes[i].points.len() == 0) {
+            if self.nodes[i].is_leaf() && self.nodes[i].points.len() == 0 {
                 count_empty_leaves += 1;
                 continue;
             }
