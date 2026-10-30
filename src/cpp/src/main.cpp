@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     if (argc == 3 && strcmp(argv[2], "-q") == 0)
     {
-        // Quit after buiding and analysing
+        // Quit after building and analysing
         std::cout << "EXITING: early exit parameter found\n";
 
         // Flush Tracy before exiting

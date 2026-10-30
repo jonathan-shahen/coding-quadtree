@@ -1,4 +1,6 @@
-#[derive(Default, Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct SearchResults {
     /// Ids that were found within the Radius
     found_ids: Vec<i64>,
