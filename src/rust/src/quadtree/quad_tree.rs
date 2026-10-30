@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::quadtree::GeoBoundary;
@@ -67,7 +68,12 @@ impl QuadTree {
         self.nodes.reserve(NODE_RESERVE);
 
         // Build the default root node
-        self.nodes.push(QuadTreeNode::from_boundary(GeoBoundary{lat_min:-90.0, lat_max: 90.0, lon_min: -180.0, lon_max: 180.0}));
+        self.nodes.push(QuadTreeNode::from_boundary(GeoBoundary {
+            lat_min: -90.0,
+            lat_max: 90.0,
+            lon_min: -180.0,
+            lon_max: 180.0,
+        }));
         self.root_index = 0;
 
         let mut row: usize = 0;
@@ -77,16 +83,17 @@ impl QuadTree {
             let record = record?;
 
             // Skip the header row
-            if row == 0
-            {
+            if row == 0 {
                 row += 1;
                 continue;
             }
 
             // TODO: PERFORMANCE
             point.id = parse_or_continue!(record.get(0).ok_or("Missing radius")?, i64, "id");
-            point.lat = parse_or_continue!(record.get(1).ok_or("Missing latitude")?, f32, "latitude");
-            point.lon = parse_or_continue!(record.get(2).ok_or("Missing longitude")?, f32, "longitude");
+            point.lat =
+                parse_or_continue!(record.get(1).ok_or("Missing latitude")?, f32, "latitude");
+            point.lon =
+                parse_or_continue!(record.get(2).ok_or("Missing longitude")?, f32, "longitude");
 
             let _ = self.insert(self.root_index as usize, point)?;
             self.count_points += 1;
@@ -96,7 +103,7 @@ impl QuadTree {
 
         let t2 = Instant::now();
         let time_span = t2.duration_since(t1);
-        
+
         println!("    Build Time: {} seconds.", time_span.as_secs_f64());
         println!("     Overflows: {}", self.count_overflows);
         println!("    Subdivides: {}", self.count_subdivides);
@@ -107,6 +114,61 @@ impl QuadTree {
     }
 
     pub fn analyze(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // ZoneScopedN("Quadtree Analyze");
+        let t1 = Instant::now();
+        let mut count_empty_leaves = 0;
+        let max_point_counts: usize = 15;
+        let mut top_point_counts: VecDeque<usize> = VecDeque::with_capacity(max_point_counts + 1);
+        top_point_counts.push_back(0);
+
+        for i in 0..self.nodes.len() {
+            if (self.nodes[i].is_leaf() && self.nodes[i].points.len() == 0) {
+                count_empty_leaves += 1;
+                continue;
+            }
+
+            if self.nodes[i].points.len()
+                > self.nodes[*top_point_counts.back().ok_or("No Back found?")?]
+                    .points
+                    .len()
+            {
+                top_point_counts.push_back(i);
+                top_point_counts.make_contiguous().sort_by(|a, b| {
+                    self.nodes[*b]
+                        .points
+                        .len()
+                        .cmp(&self.nodes[*a].points.len())
+                });
+
+                if top_point_counts.len() > max_point_counts {
+                    top_point_counts.pop_back();
+                }
+            }
+        }
+
+        println!("=================================================");
+        println!("Analyze of QuadTree");
+        let t2 = Instant::now();
+        let time_span = t2.duration_since(t1);
+        println!("       Analysis Time: {} seconds.", time_span.as_secs_f64());
+        println!("               Nodes: {}", self.nodes.len());
+        println!("               Empty: {}", count_empty_leaves);
+
+        println!("    Top Point Counts:");
+        let mut i: usize = 1;
+        for node_i in top_point_counts {
+            println!(
+                "                     {:0>2}. Node {: >width$}; Points: {}; Area: {:+.1e}; {:?}",
+                i,
+                node_i,
+                self.nodes[node_i].points.len(),
+                self.nodes[node_i].boundary.area(),
+                self.nodes[node_i].boundary,
+                width = (self.nodes.len().to_string()).len()
+            );
+            i += 1;
+        }
+        println!("=================================================");
         Ok(())
     }
 
@@ -121,7 +183,11 @@ impl QuadTree {
     /// @param node_idx Index of node to try to insert into
     /// @param point Reference to point data
     /// @return TRUE if inserted, FALSE if not inserted
-    pub fn insert(&mut self, node_idx: usize, point: Point) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn insert(
+        &mut self,
+        node_idx: usize,
+        point: Point,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         // INSERT: into a LEAF node if there is capacity
         if self.nodes[node_idx].is_leaf() && self.nodes[node_idx].num_points() < NODE_POINTS_LIMIT {
             self.nodes[node_idx].points.push(point);
@@ -181,20 +247,24 @@ impl QuadTree {
 
         // Setup each quadrant
         // North West
-        self.nodes
-            .push(QuadTreeNode::from_boundary(self.nodes[node_idx].boundary.nw()));
+        self.nodes.push(QuadTreeNode::from_boundary(
+            self.nodes[node_idx].boundary.nw(),
+        ));
         self.nodes[node_idx].nw = (self.nodes.len() - 1) as i64;
         // North East
-        self.nodes
-            .push(QuadTreeNode::from_boundary(self.nodes[node_idx].boundary.ne()));
+        self.nodes.push(QuadTreeNode::from_boundary(
+            self.nodes[node_idx].boundary.ne(),
+        ));
         self.nodes[node_idx].ne = (self.nodes.len() - 1) as i64;
         // South West
-        self.nodes
-            .push(QuadTreeNode::from_boundary(self.nodes[node_idx].boundary.sw()));
+        self.nodes.push(QuadTreeNode::from_boundary(
+            self.nodes[node_idx].boundary.sw(),
+        ));
         self.nodes[node_idx].sw = (self.nodes.len() - 1) as i64;
         // South East
-        self.nodes
-            .push(QuadTreeNode::from_boundary(self.nodes[node_idx].boundary.se()));
+        self.nodes.push(QuadTreeNode::from_boundary(
+            self.nodes[node_idx].boundary.se(),
+        ));
         self.nodes[node_idx].se = (self.nodes.len() - 1) as i64;
 
         // Move the points into the quadrants
@@ -203,7 +273,8 @@ impl QuadTree {
             // PERFORMANCE: do not call `insert` unless you have to
             if self.nodes[self.nodes[node_idx].nw as usize]
                 .boundary
-                .inside(point.lat, point.lon) {
+                .inside(point.lat, point.lon)
+            {
                 let _ = self.insert(self.nodes[node_idx].nw as usize, point);
                 continue;
             }
@@ -234,7 +305,7 @@ impl QuadTree {
     }
 }
 
-#[derive(Clone,Copy,Default,Debug)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Point {
     id: i64,
     lat: f32,
