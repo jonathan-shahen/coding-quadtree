@@ -13,10 +13,10 @@ const InvalidNode = -1
 type QuadTreeNode struct {
 	boundary GeoBoundary
 	points   []Point
-	nw       int64
-	ne       int64
-	sw       int64
-	se       int64
+	nw       int
+	ne       int
+	sw       int
+	se       int
 }
 
 func NewQuadTreeNode(boundary GeoBoundary) QuadTreeNode {

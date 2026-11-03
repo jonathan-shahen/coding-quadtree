@@ -2,7 +2,7 @@ build:
 	go build -o build/ .
 
 run:
-	go run . -q ../../data/example_data.csv
+	go run . ../../data/example_data.csv
 
 clean:
 	rm -rf build

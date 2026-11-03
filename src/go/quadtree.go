@@ -2,16 +2,19 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"time"
 )
 
+const NODE_MIN_AREA = 10.0
+
 type QuadTree struct {
 	nodes            []QuadTreeNode
-	root_index       uint64
+	root_index       int
 	count_points     uint64
 	count_subdivides uint64
 	count_overflows  uint64
@@ -55,7 +58,7 @@ func (tree *QuadTree) loadCsv(csvFile string) (int64, error) {
 	for scanner.Scan() {
 		fmt.Sscanf(scanner.Text(), "%d,%f,%f", &id, &lat, &lon)
 
-		tree.insert(id, lat, lon)
+		tree.insert(tree.root_index, Point{id, lat, lon})
 		count++
 	}
 	if err := scanner.Err(); err != nil {
@@ -93,8 +96,8 @@ func (tree *QuadTree) analyze() error {
 
 		if len(tree.nodes[i].points) > len(tree.nodes[top_point_counts[len(top_point_counts)-1]].points) {
 			top_point_counts = append(top_point_counts, i)
-			sort.Slice(top_point_counts, func(i, j int) bool {
-				return len(tree.nodes[j].points) > len(tree.nodes[i].points)
+			slices.SortFunc(top_point_counts, func(i, j int) int {
+				return cmp.Compare(len(tree.nodes[j].points), len(tree.nodes[i].points))
 			})
 
 			if len(top_point_counts) > max_point_counts {
@@ -115,7 +118,7 @@ func (tree *QuadTree) analyze() error {
 		node_i := top_point_counts[i]
 
 		fmt.Printf(
-			"                     %02d. Node %d; Points: %d; Area: %f; %v\n",
+			"                     %02d. Node % 4d; Points: %d; Area: %f; %v\n",
 			i,
 			node_i,
 			len(tree.nodes[node_i].points),
@@ -133,6 +136,111 @@ func (tree *QuadTree) find(lat float32, lon float32, radius float32, limit int32
 	return results, nil
 }
 
-func (tree *QuadTree) insert(id int64, lat float32, lon float32) error {
+func (tree *QuadTree) insert(nodeIdx int, point Point) (bool, error) {
+	// INSERT: into a LEAF node if there is capacity
+	if tree.nodes[nodeIdx].leaf() && len(tree.nodes[nodeIdx].points) < NODE_POINTS_LIMIT {
+		tree.nodes[nodeIdx].points = append(tree.nodes[nodeIdx].points, point)
+		return true, nil
+	}
+
+	// Mall Problem: Prevent Infinite Depth Tree
+	// NOTE: we must exceed capacity if the minimum node area is reached
+	if tree.nodes[nodeIdx].leaf() && tree.nodes[nodeIdx].boundary.area() <= NODE_MIN_AREA {
+		tree.count_overflows += 1
+		tree.nodes[nodeIdx].points = append(tree.nodes[nodeIdx].points, point)
+		return true, nil
+	}
+
+	// If leaf node, then must subdivide to continue
+	if tree.nodes[nodeIdx].leaf() {
+		if err := tree.subdivide(nodeIdx); err != nil {
+			return false, err
+		}
+	}
+
+	node := &tree.nodes[nodeIdx]
+
+	// PERFORMANCE: do not call `insert` unless you have to
+	if tree.nodes[node.nw].boundary.inside(point.lat, point.lon) {
+		if _, err := tree.insert(node.nw, point); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if tree.nodes[node.ne].boundary.inside(point.lat, point.lon) {
+		if _, err := tree.insert(node.ne, point); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if tree.nodes[node.sw].boundary.inside(point.lat, point.lon) {
+		if _, err := tree.insert(node.sw, point); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if tree.nodes[node.se].boundary.inside(point.lat, point.lon) {
+		if _, err := tree.insert(node.se, point); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (tree *QuadTree) subdivide(nodeIdx int) error {
+	tree.count_subdivides++
+
+	node := &tree.nodes[nodeIdx]
+
+	// Setup each quadrant
+	// North West
+	tree.nodes = append(tree.nodes, NewQuadTreeNode(node.boundary.nw()))
+	node.nw = len(tree.nodes) - 1
+	// North East
+	tree.nodes = append(tree.nodes, NewQuadTreeNode(node.boundary.ne()))
+	node.ne = len(tree.nodes) - 1
+	// South West
+	tree.nodes = append(tree.nodes, NewQuadTreeNode(node.boundary.sw()))
+	node.sw = len(tree.nodes) - 1
+	// South East
+	tree.nodes = append(tree.nodes, NewQuadTreeNode(node.boundary.se()))
+	node.se = len(tree.nodes) - 1
+
+	// Move the points into the quadrants
+	for i := range len(node.points) {
+		point := &node.points[i]
+		// PERFORMANCE: do not call `insert` unless you have to
+		if tree.nodes[node.nw].boundary.inside(point.lat, point.lon) {
+			if _, err := tree.insert(node.nw, *point); err != nil {
+				return err
+			}
+			continue
+		}
+		if tree.nodes[node.ne].boundary.inside(point.lat, point.lon) {
+			if _, err := tree.insert(node.ne, *point); err != nil {
+				return err
+			}
+			continue
+		}
+		if tree.nodes[node.sw].boundary.inside(point.lat, point.lon) {
+			if _, err := tree.insert(node.sw, *point); err != nil {
+				return err
+			}
+			continue
+		}
+		if tree.nodes[node.se].boundary.inside(point.lat, point.lon) {
+			if _, err := tree.insert(node.se, *point); err != nil {
+				return err
+			}
+			continue
+		}
+
+		return errors.New(fmt.Sprint("Unable to add point", point))
+	}
+	// Clear the points without losing the capacity
+	node.points = nil
+
 	return nil
 }

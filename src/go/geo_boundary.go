@@ -36,3 +36,51 @@ func (boundary *GeoBoundary) area() float64 {
 
 	return width_m * height_m
 }
+
+// @return TRUE if the lat/lon is within the boundary, FALSE otherwise.
+func (boundary *GeoBoundary) inside(lat float32, lon float32) bool {
+	return (lat >= boundary.lat_min && lat <= boundary.lat_max) &&
+		(lon >= boundary.lon_min && lon <= boundary.lon_max)
+}
+
+// @return TRUE if the boundaries intersect, FALSE if only touching or otherwise.
+func (boundary *GeoBoundary) intersect(boundary2 *GeoBoundary) bool {
+	// Approximation: using Cartesian intersection on a circular body
+	return boundary.lat_min < boundary2.lat_max &&
+		boundary.lat_max > boundary2.lat_min &&
+		boundary.lon_max > boundary2.lon_min &&
+		boundary.lon_min < boundary2.lon_max
+}
+
+func (boundary *GeoBoundary) nw() GeoBoundary {
+	return GeoBoundary{
+		lat_min: boundary.lat_min,
+		lat_max: boundary.lat_min + (boundary.lat_max-boundary.lat_min)/2.0,
+		lon_min: boundary.lon_min,
+		lon_max: boundary.lon_min + (boundary.lon_max-boundary.lon_min)/2.0,
+	}
+}
+func (boundary *GeoBoundary) ne() GeoBoundary {
+	return GeoBoundary{
+		lat_min: boundary.lat_min,
+		lat_max: boundary.lat_min + (boundary.lat_max-boundary.lat_min)/2.0,
+		lon_min: boundary.lon_min + (boundary.lon_max-boundary.lon_min)/2.0,
+		lon_max: boundary.lon_max,
+	}
+}
+func (boundary *GeoBoundary) sw() GeoBoundary {
+	return GeoBoundary{
+		lat_min: boundary.lat_min + (boundary.lat_max-boundary.lat_min)/2.0,
+		lat_max: boundary.lat_max,
+		lon_min: boundary.lon_min,
+		lon_max: boundary.lon_min + (boundary.lon_max-boundary.lon_min)/2.0,
+	}
+}
+func (boundary *GeoBoundary) se() GeoBoundary {
+	return GeoBoundary{
+		lat_min: boundary.lat_min + (boundary.lat_max-boundary.lat_min)/2.0,
+		lat_max: boundary.lat_max,
+		lon_min: boundary.lon_min + (boundary.lon_max-boundary.lon_min)/2.0,
+		lon_max: boundary.lon_max,
+	}
+}
