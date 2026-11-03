@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -13,6 +15,7 @@ func main() {
 	if len(flag.Args()) != 1 {
 		fmt.Println("Missing csv_file")
 		flag.PrintDefaults()
+		os.Exit(1)
 	}
 	csvFile := flag.Args()[0]
 
@@ -36,12 +39,29 @@ func main() {
 		os.Exit(0)
 	}
 
-	var lat, lon, radius float32
-	var limit int32
-
-	for true {
+	reader := bufio.NewReader(os.Stdin)
+	for {
 		fmt.Print("\nEnter lat,lon,radius,limit (or 'quit'): ")
-		fmt.Scanf("%f,%f,%f,%d", &lat, &lon, &radius, &limit)
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		line = strings.TrimSpace(line)
+
+		if line == "quit" {
+			break
+		}
+
+		var lat, lon, radius float32
+		var limit int
+
+		_, err = fmt.Sscanf(line, "%f,%f,%f,%d", &lat, &lon, &radius, &limit)
+		if err != nil {
+			fmt.Println("Invalid input:", err)
+			continue
+		}
 
 		result, err := quadTree.find(lat, lon, radius, limit)
 

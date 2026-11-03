@@ -16,6 +16,21 @@ type GeoBoundary struct {
 	lon_max float32
 }
 
+func NewGeoBoundary(lat float32, lon float32, radius float32) GeoBoundary {
+	// Converting radius to lie angular radians on the Earth
+	angR := float64(radius / EARTH_RADIUS)
+
+	// NOTE: longitude is more complex, see < http: // janmatuschek.de/LatitudeLongitudeBoundingCoordinates>
+	deltaLon := math.Asin(math.Sin(angR) / math.Cos(toRadians(float64(lat))))
+
+	return GeoBoundary{
+		float32(toDegrees((toRadians(float64(lat)) - angR))),
+		float32(toDegrees((toRadians(float64(lat)) + angR))),
+		float32(toDegrees((toRadians(float64(lon)) - deltaLon))),
+		float32(toDegrees((toRadians(float64(lon)) + deltaLon))),
+	}
+}
+
 func toRadians(degrees float64) float64 {
 	return math.Pi / 180.0 * degrees
 }

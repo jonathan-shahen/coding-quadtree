@@ -130,8 +130,91 @@ func (tree *QuadTree) analyze() error {
 	return nil
 }
 
-func (tree *QuadTree) find(lat float32, lon float32, radius float32, limit int32) (SearchResults, error) {
+func (tree *QuadTree) find(lat float32, lon float32, radius float32, limit int) (SearchResults, error) {
 	results := SearchResults{}
+
+	boundary := NewGeoBoundary(lat, lon, radius)
+	boundary2 := NewGeoBoundary(lat, lon, 2.0*radius)
+
+	if !tree.nodes[0].boundary.intersect(&boundary2) {
+		// SHORTCUT: lat/lon must intersect with the entire globe
+		return results, fmt.Errorf("ERROR: invalid GPS coord (%f,%f), does not intersect with the world.\n", lat, lon)
+	}
+
+	count_nodes := 0
+	var intersectingLeafNodes []int
+	var nodeQueue []int
+	nodeQueue = append(nodeQueue, 0)
+
+	for len(nodeQueue) > 0 {
+		count_nodes++
+		var node_i = nodeQueue[0]
+		// Pop from front
+		nodeQueue = nodeQueue[1:]
+
+		if tree.nodes[node_i].leaf() {
+			intersectingLeafNodes = append(intersectingLeafNodes, node_i)
+			continue
+		}
+
+		// Find any that intersect with 2*radius
+		if tree.nodes[tree.nodes[node_i].nw].boundary.intersect(&boundary2) {
+			nodeQueue = append(nodeQueue, tree.nodes[node_i].nw)
+		}
+		if tree.nodes[tree.nodes[node_i].ne].boundary.intersect(&boundary2) {
+			nodeQueue = append(nodeQueue, tree.nodes[node_i].ne)
+		}
+		if tree.nodes[tree.nodes[node_i].sw].boundary.intersect(&boundary2) {
+			nodeQueue = append(nodeQueue, tree.nodes[node_i].sw)
+		}
+		if tree.nodes[tree.nodes[node_i].se].boundary.intersect(&boundary2) {
+			nodeQueue = append(nodeQueue, tree.nodes[node_i].se)
+		}
+	}
+
+	var boundary_points []Point
+	var boundary2_points []Point
+
+	for i := range len(intersectingLeafNodes) {
+		for j := range len(tree.nodes[intersectingLeafNodes[i]].points) {
+			point := &tree.nodes[intersectingLeafNodes[i]].points[j]
+			if boundary.inside(point.lat, point.lon) {
+				// inside both boundaries, but only count for boundary (creating donut shape)
+				boundary_points = append(boundary_points, *point)
+			} else if boundary2.inside(point.lat, point.lon) {
+				// only inside boundary 2
+				boundary2_points = append(boundary2_points, *point)
+			}
+		}
+	}
+
+	// Collect Results
+	for i := range len(boundary_points) {
+		point := &boundary_points[i]
+		if len(results.foundIds) < limit {
+			results.foundIds = append(results.foundIds, point.id)
+		} else if len(results.extraIds) < limit {
+			// grab any left over boundary ids for extraIds
+			results.extraIds = append(results.extraIds, point.id)
+		} else {
+			// both are filled up
+			break
+		}
+	}
+	for pointIdx := range len(boundary2_points) {
+		if len(results.extraIds) < limit {
+			// grab boundary2 ids for extraIds
+			results.extraIds = append(results.extraIds, boundary2_points[pointIdx].id)
+		} else {
+			// filled up
+			break
+		}
+	}
+
+	fmt.Println("  Intersecting Leaf Nodes:", len(intersectingLeafNodes))
+	fmt.Println("           Searched Nodes:", count_nodes)
+	fmt.Println("       Points in boundary:", len(boundary_points))
+	fmt.Println("     Points in 2*boundary:", len(boundary2_points))
 
 	return results, nil
 }
